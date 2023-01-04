@@ -190,8 +190,39 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
+	struct thread *cur = thread_current();
+	struct thread * lock_holder = lock->holder;
+
+	enum intr_level old_level = intr_disable();
+	if(lock_holder){
+		cur->waiting_lock = lock;
+		list_push_front(&lock_holder->donation_thread, &cur->donation_elem);
+		
+		donate_priority();
+	}
+	intr_set_level(old_level);
+
 	sema_down (&lock->semaphore);
+
+	cur->waiting_lock = NULL;
 	lock->holder = thread_current ();
+}
+
+/**
+ * Donate priority in depth, 8
+*/
+void
+donate_priority(){
+	int depth = 8;
+	struct thread *cur = thread_current();
+
+	while(depth--){
+		if(cur->waiting_lock == NULL || cur->priority < cur->waiting_lock->holder->priority)
+			break;
+		struct thread *holder = cur->waiting_lock->holder;
+		holder->priority = cur->priority;
+		cur = holder;
+	}
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -224,6 +255,26 @@ lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 
+	struct thread *cur = thread_current();
+	struct list_elem *e;
+
+	enum intr_level old_level = intr_disable();
+	
+	int priority = cur->origin_priority;
+	for(e = list_begin(&cur->donation_thread); e != list_end(&cur->donation_thread); e = list_next(e)){
+		struct thread *t = list_entry(e, struct thread, donation_elem);
+		if(t->waiting_lock == lock){
+			list_remove(&t->donation_elem);
+		}
+		else{
+			if(priority < t->priority){
+				priority = t->priority;
+			}
+		}
+	}
+	intr_set_level(old_level);
+
+	thread_set_priority(priority);
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);
 }
