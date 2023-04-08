@@ -163,8 +163,12 @@ class Pintos(object):
         puts, gets = (self.__prepare_scratch_files()
                       if self.host_fns or self.guest_fns else ([], []))
 
+        # 임시파일 만들어서 os.dsk, 명령어 인자 복사
         self.bdevs['os'] = self.__prepare_kernel_argument(puts, gets)
-        cmd = self.__prepare_cmd()
+
+        # 예시: ['qemu-system-x86_64', '-nographic', '-drive', 'file=/tmp/tmpwp3603w5.dsk,format=raw,index=0,media=disk', '-cpu', 'qemu64', '-m', '20', '-no-reboot', '-serial', 'mon:stdio']
+        cmd = self.__prepare_cmd()  
+        
         args = {'stdin': sys.stdin, 'stdout': sys.stdout, 'stderr': sys.stderr}
         if self.timeout != 0:
             args['timeout'] = self.timeout
