@@ -81,7 +81,8 @@ class Pintos(object):
     # ex) pintos -v -k -T 60 -m 20 -- -q run alarm-single
     # cmd : -- 다음으로 넘어온 kern_args 인자들을 string으로 저장한 변수. '-qrunalarm-single'
     # data : build의 산출물인 os.dsk가 byte 단위로 읽어 저장한 list 변수
-    # name : 임시 파일. data[:0x17a] + args길이 + data[0x1fe:] 아마 pintos 바이너리와 명령어 인자 넘기는 것인듯..
+    # name : 임시 파일. data[:0x17a] + args길이 + args + data[0x1fe:] 아마 pintos 바이너리와 명령어 인자 넘기는 것인듯..
+    #                   ^ loader.bin                   ^ kernel.bin
 
     def __prepare_kernel_argument(self, puts, gets):
         rem = []
