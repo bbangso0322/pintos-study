@@ -28,6 +28,9 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* Sleep list. */
+static struct list sleep_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -108,6 +111,7 @@ thread_init (void) {
 	/* Init the globla thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	list_init (&sleep_list);
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
@@ -587,4 +591,41 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+/* List compare function */
+bool thread_lesseq_comapre(const struct list_elem *a, const struct list_elem *b, void *aux){
+	return list_entry(a, struct thread, elem)->wakeup_tick <= list_entry(b, struct thread, elem)->wakeup_tick;
+}
+
+/* Thread sleeps for wakeuptime. */
+void thread_sleep(int64_t wakeup_tick){
+
+	struct thread *cur;
+	enum intr_level old_level;
+
+	old_level = intr_disable();
+	cur = thread_current();
+
+	ASSERT(cur != idle_thread);
+
+	cur->wakeup_tick = wakeup_tick;
+	list_insert_ordered(&sleep_list, &cur->elem, thread_lesseq_comapre, 0);
+	thread_block();
+
+	intr_set_level(old_level);
+}
+
+/* Thread wakeup */
+void thread_wakeup(int64_t wakeup_tick){
+
+	enum intr_level old_level;
+	old_level = intr_disable();
+
+	while(!list_empty(&sleep_list) && list_entry(list_front(&sleep_list), struct thread, elem)->wakeup_tick <=  wakeup_tick){
+		struct thread *t = list_entry(list_pop_front(&sleep_list), struct thread, elem);
+		thread_unblock(t);
+	}
+
+	intr_set_level(old_level);
 }
