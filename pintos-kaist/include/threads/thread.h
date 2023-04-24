@@ -92,7 +92,11 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 	int64_t wakeup_tick;				/* Tick to wakeup */
-
+    int init_priority;
+    
+    struct lock *wait_on_lock;
+    struct list donations;
+    struct list_elem donation_elem;
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
@@ -136,7 +140,9 @@ void thread_yield (void);
 void thread_sleep(int64_t);
 void thread_wakeup(int64_t);
 
-bool thread_lesseq_comapre(const struct list_elem *a, const struct list_elem *b, void *aux);
+bool thread_greater_tick_compare(const struct list_elem *a, const struct list_elem *b, void *aux);
+bool thread_less_priority_compare(const struct list_elem *a, const struct list_elem *b, void *aux);
+bool thread_compare_donate_priority (const struct list_elem *l, const struct list_elem *s, void *aux);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
@@ -145,6 +151,10 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+void remove_with_lock (struct lock *lock);
+void donate_priority (void);
+void refresh_priority (void);
 
 void do_iret (struct intr_frame *tf);
 
